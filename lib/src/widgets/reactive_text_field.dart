@@ -17,6 +17,9 @@ import 'package:reactive_forms/reactive_forms.dart';
 /// A [ReactiveForm] ancestor is required.
 ///
 class ReactiveTextField<T> extends ReactiveFormField<T, String> {
+  /// If true, when gaining focus all text will be selected.
+  final bool selectAllOnFocus;
+
   final TextEditingController? _textController;
 
   static Widget _defaultContextMenuBuilder(
@@ -107,9 +110,9 @@ class ReactiveTextField<T> extends ReactiveFormField<T, String> {
     TextAlign textAlign = TextAlign.start,
     TextAlignVertical? textAlignVertical,
     bool autofocus = false,
+    this.selectAllOnFocus = false,
     bool readOnly = false,
-    EditableTextContextMenuBuilder? contextMenuBuilder =
-        _defaultContextMenuBuilder,
+    EditableTextContextMenuBuilder? contextMenuBuilder = _defaultContextMenuBuilder,
     bool? showCursor,
     bool obscureText = false,
     String obscuringCharacter = '•',
@@ -167,14 +170,13 @@ class ReactiveTextField<T> extends ReactiveFormField<T, String> {
           focusNode: focusNode,
           builder: (ReactiveFormFieldState<T, String> field) {
             final state = field as _ReactiveTextFieldState<T>;
-            final effectiveDecoration = decoration
-                .applyDefaults(Theme.of(state.context).inputDecorationTheme);
+            final effectiveDecoration =
+                decoration.applyDefaults(Theme.of(state.context).inputDecorationTheme);
 
             return TextField(
               controller: state._textController,
               focusNode: state.focusNode,
-              decoration:
-                  effectiveDecoration.copyWith(errorText: state.errorText),
+              decoration: effectiveDecoration.copyWith(errorText: state.errorText),
               keyboardType: keyboardType,
               textInputAction: textInputAction,
               style: style,
@@ -190,13 +192,9 @@ class ReactiveTextField<T> extends ReactiveFormField<T, String> {
               obscureText: obscureText,
               autocorrect: autocorrect,
               smartDashesType: smartDashesType ??
-                  (obscureText
-                      ? SmartDashesType.disabled
-                      : SmartDashesType.enabled),
+                  (obscureText ? SmartDashesType.disabled : SmartDashesType.enabled),
               smartQuotesType: smartQuotesType ??
-                  (obscureText
-                      ? SmartQuotesType.disabled
-                      : SmartQuotesType.enabled),
+                  (obscureText ? SmartQuotesType.disabled : SmartQuotesType.enabled),
               enableSuggestions: enableSuggestions,
               maxLengthEnforcement: maxLengthEnforcement,
               maxLines: maxLines,
@@ -228,12 +226,9 @@ class ReactiveTextField<T> extends ReactiveFormField<T, String> {
               enableIMEPersonalizedLearning: enableIMEPersonalizedLearning,
               scribbleEnabled: scribbleEnabled,
               onTap: onTap != null ? () => onTap(field.control) : null,
-              onSubmitted: onSubmitted != null
-                  ? (_) => onSubmitted(field.control)
-                  : null,
-              onEditingComplete: onEditingComplete != null
-                  ? () => onEditingComplete.call(field.control)
-                  : null,
+              onSubmitted: onSubmitted != null ? (_) => onSubmitted(field.control) : null,
+              onEditingComplete:
+                  onEditingComplete != null ? () => onEditingComplete.call(field.control) : null,
               onChanged: (value) {
                 field.didChange(value);
                 onChanged?.call(field.control);
@@ -250,12 +245,10 @@ class ReactiveTextField<T> extends ReactiveFormField<T, String> {
         );
 
   @override
-  ReactiveFormFieldState<T, String> createState() =>
-      _ReactiveTextFieldState<T>();
+  ReactiveFormFieldState<T, String> createState() => _ReactiveTextFieldState<T>();
 }
 
-class _ReactiveTextFieldState<T>
-    extends ReactiveFocusableFormFieldState<T, String> {
+class _ReactiveTextFieldState<T> extends ReactiveFocusableFormFieldState<T, String> {
   late TextEditingController _textController;
 
   @override
@@ -291,12 +284,24 @@ class _ReactiveTextFieldState<T>
     return super.selectValueAccessor();
   }
 
+  void _focusListener() {
+    final widget = this.widget;
+    if (mounted && widget is ReactiveTextField && (widget as ReactiveTextField).selectAllOnFocus) {
+      _textController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _textController.text.length,
+      );
+    }
+  }
+
   void _initializeTextController() {
     final initialValue = value;
+    focusNode.addListener(_focusListener);
     final currentWidget = widget as ReactiveTextField<T>;
     _textController = (currentWidget._textController != null)
         ? currentWidget._textController!
         : TextEditingController();
+    focusNode.removeListener(_focusListener);
     _textController.text = initialValue == null ? '' : initialValue.toString();
   }
 }
